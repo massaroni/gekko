@@ -31,12 +31,11 @@ if(!to.isValid())
 var TradeBatcher = require(dirs.budfox + 'tradeBatcher');
 var CandleManager = require(dirs.budfox + 'candleManager');
 var exchangeChecker = require(dirs.gekko + 'exchange/exchangeChecker');
+const ProxyImporter = require('./proxyImporter');
 
 var error = exchangeChecker.cantFetchFullHistory(config.watch);
 if(error)
   util.die(error, true);
-
-var fetcher = require(dirs.importers + config.watch.exchange);
 
 if(to <= from)
   util.die('This daterange does not make sense.')
@@ -47,24 +46,30 @@ var Market = function() {
 
   this.tradeBatcher = new TradeBatcher(this.exchangeSettings.tid);
   this.candleManager = new CandleManager;
-  this.fetcher = fetcher({
-    to: to,
-    from: from
-  });
-
   this.done = false;
 
-  this.fetcher.bus.on(
-    'trades',
-    this.processTrades
-  );
+  if (config.proxyImporter && config.proxyImporter.enabled) {
+    log.info('Proxy Importer enabled');
+    this.proxy = new ProxyImporter(from, to, config.watch, config.proxyImporter);
+  } else {
+    var fetcher = require(dirs.importers + config.watch.exchange);
+    this.fetcher = fetcher({
+      to: to,
+      from: from
+    });
 
-  this.fetcher.bus.on(
-    'done',
-    function() {
-      this.done = true;
-    }.bind(this)
-  )
+    this.fetcher.bus.on(
+      'trades',
+      this.processTrades
+    );
+  
+    this.fetcher.bus.on(
+      'done',
+      function() {
+        this.done = true;
+      }.bind(this)
+    );
+  }
 
   this.tradeBatcher.on(
     'new batch',
@@ -78,7 +83,7 @@ var Market = function() {
 
   Readable.call(this, {objectMode: true});
 
-  this.get();
+  setTimeout(function () {this.get();}.bind(this));
 }
 
 var Readable = require('stream').Readable;
@@ -93,15 +98,45 @@ Market.prototype.pushCandles = function(candles) {
 }
 
 Market.prototype.get = function() {
-  this.fetcher.fetch();
+  if (this.proxy) {
+    this.proxy.fetch(
+      function (err) {
+        if (!!err) {
+          log.error('Proxy Importer error: ' + JSON.stringify(err));
+        }
+        this.done = true;
+        this._emitDone();
+      }.bind(this),
+      function (candles) {
+        candles = candles || [];
+        candles = _.map(candles, momentizeCandle);
+        this.pushCandles(candles);
+      }.bind(this));
+  } else {
+    this.fetcher.fetch();
+  }
 }
+
+function momentizeCandle(candle) {
+  if (!candle || moment.isMoment(candle.start)) {
+    return candle;
+  }
+
+  candle = _.clone(candle);
+  candle.start = moment.unix(candle.start);
+  return candle;
+}
+
+Market.prototype._emitDone = function () {
+  log.info('Done importing!');
+  this.emit('end');
+};
 
 Market.prototype.processTrades = function(trades) {
   this.tradeBatcher.write(trades);
 
   if(this.done) {
-    log.info('Done importing!');
-    this.emit('end');
+    this._emitDone();
     return;
   }
 

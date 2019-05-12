@@ -20,6 +20,7 @@
     "co-fs": "^1.2.0",
     "commander": "^2.13.0",
     "gekko": "0.0.9",
+    "gekko-api-client": "^0.6.8",
     "humanize-duration": "^3.10.0",
     "koa": "^1.2.0",
     "koa-bodyparser": "^2.2.0",

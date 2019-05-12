@@ -101,4 +101,11 @@ config.importer = {
   }
 }
 
+// Use another Gekko host as a cache for importing candle data.
+config.proxyImporter = {
+  enabled: false,
+  host: '192.168.2.30',
+  port: 3000
+};
+
 module.exports = config;
