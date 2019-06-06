@@ -101,12 +101,12 @@ Gekko.prototype.finalize = function() {
   tradingMethod.finish(this.shutdown.bind(this));
 }
 
-Gekko.prototype.shutdown = function() {
+Gekko.prototype.shutdown = function(stratResults) {
   this.end();
   async.eachSeries(
     this.plugins,
     function(c, callback) {
-      if (c.finalize) c.finalize(callback);
+      if (c.finalize) c.finalize(callback, stratResults);
       else callback();
     },
     () => {

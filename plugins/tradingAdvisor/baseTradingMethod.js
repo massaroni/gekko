@@ -317,13 +317,13 @@ Base.prototype.finish = function(done) {
   // to be sure we only stop after all candles are
   // processed.
   if(!this.asyncTick) {
-    this.end();
-    return done();
+    let stratResults = this.end();
+    return done(stratResults);
   }
 
   if(this.age === this.processedTicks) {
-    this.end();
-    return done();
+    let stratResults = this.end();
+    return done(stratResults);
   }
 
   // we are not done, register cb

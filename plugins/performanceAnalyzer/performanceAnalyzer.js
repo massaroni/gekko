@@ -234,17 +234,29 @@ PerformanceAnalyzer.prototype.calculateReportStatistics = function() {
   return report;
 }
 
-PerformanceAnalyzer.prototype.finalize = function(done) {
+PerformanceAnalyzer.prototype.finalize = function(done, stratResults) {
   if(!this.trades) {
+    if (stratResults) {
+      this.logReport({stratResults});
+    }
     return done();
   }
 
   const report = this.calculateReportStatistics();
   if(report) {
-    this.logger.finalize(report);
-    this.emit('performanceReport', report);
+    if (stratResults) {
+      report.stratResults = stratResults;
+    }
+    this.logReport(report);
+  } else if (stratResults) {
+    this.logReport({stratResults});
   }
   done();
+}
+
+PerformanceAnalyzer.prototype.logReport = function (report) {
+  this.logger.finalize(report);
+  this.emit('performanceReport', report);
 }
 
 
