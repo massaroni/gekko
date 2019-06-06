@@ -83,6 +83,14 @@ if(mode === 'backtest') {
   }
 
   Logger.prototype.finalize = function(report) {
+    if (report.stratResults) {
+      log.info();
+      log.info('STRATEGY RESULTS:');
+      log.info(JSON.stringify(report.stratResults));
+    }
+    if (!report.trades) {
+      return;
+    }
 
     log.info();
     log.info('(ROUNDTRIP) REPORT:');
