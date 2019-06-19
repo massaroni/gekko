@@ -126,15 +126,29 @@ Base.prototype.calculateSyncIndicators = function(candle, done) {
       i.update(candle);
   },this);
 
-  this.propogateTick(candle);
-
-  return done();
+  this.propogateTick(candle, done);
 }
 
-Base.prototype.propogateTick = function(candle) {
+Base.prototype.propogateTick = function(candle, done) {
   this.candle = candle;
-  this.update(candle);
 
+  let isDone = false;
+  const self = this;
+  const updateDone = () => {
+    if (!isDone) {
+      isDone = true;
+      self.propogateTickPostUpdate(candle);
+      done();
+    }
+  };
+  
+  const isAsync = this.update(candle, updateDone);
+  if (!isAsync) {
+    return updateDone();
+  }
+}
+
+Base.prototype.propogateTickPostUpdate = function(candle) {
   this.processedTicks++;
   var isAllowedToCheck = this.requiredHistory <= this.age;
 
